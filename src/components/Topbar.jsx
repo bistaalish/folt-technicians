@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { logout } from "../utils/auth";
+import { Link } from "react-router-dom";
 
 const Topbar = () => {
   const token = sessionStorage.getItem("token");
@@ -16,10 +17,11 @@ const Topbar = () => {
   return (
     <div className="bg-[#111] border-b border-gray-800 p-4 flex justify-between items-center shadow-md">
       {/* Welcome text */}
+      <Link to="/dashboard">
       <h1 className="text-xl font-semibold">
         Welcome, <span className="text-green-400">{username}</span>!
       </h1>
-
+      </Link>
       {/* Profile Dropdown */}
       <div className="relative">
         <button 

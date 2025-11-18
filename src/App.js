@@ -2,17 +2,17 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
-import DashboardLayout from "./layout/DashboardLayout";
-import ProtectedRoute from "./components/ProtectedRoute";
+import DeviceLayout from "./layout/DeviceLayout";
 import DevicePage from "./pages/DevicePage";
-import Dashboard from "./pages/Dashboard";
-
+import ProtectedRoute from "./components/ProtectedRoute";
+import Device from "./pages/Device";
+import ONUDetailPage from "./pages/ONUDetailPage";
+import AddONUPage from "./pages/AddONUPage";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* Public Login */}
         <Route path="/" element={<Login />} />
 
@@ -20,14 +20,17 @@ function App() {
         <Route
           element={
             <ProtectedRoute>
-              <DashboardLayout />
+              <DeviceLayout />
             </ProtectedRoute>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/device" element={<Device />} />
           <Route path="/device/:id" element={<DevicePage />} />
+          
+          {/* Corrected ONU Detail Route */}
+          <Route path="/device/:id/onu/:sn" element={<ONUDetailPage />} />
+          <Route path="/device/:id/add" element={<AddONUPage />} />
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

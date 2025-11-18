@@ -1,157 +1,201 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import {
-  getDevices,
-  searchONUBySN,
-  rebootONU,
-  deleteONU,
-} from "../api/devices";
-
-import ConfirmModal from "../components/ConfirmModal";
-import SearchONU from "../components/SearchONU";
-import ONUInfoCard from "../components/ONUInfoCard";
+import React, { useState } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { FaSearch } from "react-icons/fa";
+import { autofindONUs } from "../api/devices";
+import { searchONU } from "../api/onu";
 
 const DevicePage = () => {
-  const { id } = useParams();
-  const [device, setDevice] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { id } = useParams(); // device id
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchType, setSearchType] = useState("SN");
-  const [searchResult, setSearchResult] = useState(null);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const { name, ip } = location.state || {};
 
-  const [showRebootModal, setShowRebootModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [autofindResults, setAutofindResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingAutofind, setLoadingAutofind] = useState(false);
 
-  useEffect(() => {
-    const fetchDevice = async () => {
-      setLoading(true);
-      try {
-        const devices = await getDevices();
-        const selected = devices.find((d) => d.id === Number(id));
-        setDevice(selected);
-      } catch (err) {
-        console.error(err);
-      }
-      setLoading(false);
-    };
-    fetchDevice();
-  }, [id]);
+  // -----------------------------
+  // 🔥 Handle Autofind
+  // -----------------------------
+  const handleAutofind = async () => {
+    setLoadingAutofind(true);
 
-  const handleAutofind = () => {
-    alert("Autofind functionality triggered!");
-  };
-
-  const handleSearchONUClick = async () => {
-    const trimmedTerm = searchTerm.trim();
-    if (!trimmedTerm) return;
-
-    setSearchLoading(true);
-    setSearchResult(null);
+    // Clear Search results
+    setSearchResults([]);
     try {
-      if (searchType === "SN") {
-        const result = await searchONUBySN(id, trimmedTerm);
-        setSearchResult(result);
-      } else {
-        alert("Search by Description not implemented yet.");
-      }
+      const results = await autofindONUs(id);
+
+      const formatted = results.map((onu) => ({
+        FSP: onu.FSP,
+        ONTID: "N/A",
+        SN: onu.SN,
+        desc: "N/A",
+        device_id: id,
+      }));
+
+      setAutofindResults(formatted);
     } catch (err) {
-      console.error(err);
-      alert("Error searching ONU");
-    } finally {
-      setSearchLoading(false);
+      console.error("Autofind failed:", err);
+      setAutofindResults([]);
     }
+
+    setLoadingAutofind(false);
   };
 
-  const handleConfirmReboot = async () => {
-    setShowRebootModal(false);
-    setActionLoading(true);
+  // -----------------------------
+  // 🔥 Handle Search
+  // -----------------------------
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    setLoading(true);
+
+    // Clear Autofind results
+    setAutofindResults([]);
+
     try {
-      const response = await rebootONU(id, searchResult.FSP, searchResult.ONTID);
-      alert(response.message || "ONU rebooted successfully!");
+      const results = await searchONU(searchQuery);
+      setSearchResults(results);
     } catch (err) {
-      console.error(err);
-      alert("Error rebooting ONU");
-    } finally {
-      setActionLoading(false);
+      console.error("Search failed:", err);
+      setSearchResults([]);
     }
+
+    setLoading(false);
   };
 
-  const handleConfirmDelete = async () => {
-    setShowDeleteModal(false);
-    setActionLoading(true);
-    try {
-      await deleteONU(id, {
-        FSP: searchResult.FSP,
-        ONTID: searchResult.ONTID,
-        SN: searchResult.SN,
-        Description: searchResult.Description,
-      });
-      alert("ONU deleted successfully!");
-      setSearchResult(null);
-      setSearchTerm("");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting ONU");
-    } finally {
-      setActionLoading(false);
-    }
+  // Navigate from search table
+  const handleRowClick = (onu) => {
+    navigate(`/device/${id}/onu/${onu.SN}`, {
+      state: { onu, device: { id, name, ip } },
+    });
   };
 
-  if (loading) return <p>Loading device...</p>;
-  if (!device) return <p>Device not found.</p>;
+  // Navigate from autofind table
+  const handleAutofindRowClick = (onu) => {
+    navigate(`/device/${id}/add`, {
+      state: { onu, device: { id, name, ip } },
+    });
+  };
 
   return (
     <div className="p-6 text-white">
-      <h1 className="text-3xl font-bold mb-4">{device.name}</h1>
-      <p className="mb-6 text-gray-400">IP: {device.ip}</p>
+      {/* ---------------- Device Info ---------------- */}
+      <h1 className="text-3xl font-bold mb-2">{name || "Device Name"}</h1>
+      <p className="text-gray-400 mb-4">IP: {ip || "Device IP"}</p>
 
-      <div className="flex gap-4 mb-6 flex-wrap">
+      {/* ---------------- Autofind + Search Bar ---------------- */}
+      <div className="flex items-center gap-2 mb-6">
         <button
           onClick={handleAutofind}
-          className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded"
+          className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-white font-semibold transition"
         >
-          Autofind
+          {loadingAutofind ? "Autofinding..." : "Autofind"}
+        </button>
+
+        <input
+          type="text"
+          placeholder="Search by SN or description..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 px-4 py-2 rounded-l bg-[#1b1b1b] border border-gray-700 
+                     focus:outline-none focus:border-green-400"
+        />
+
+        <button
+          onClick={handleSearch}
+          className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-r text-white transition"
+        >
+          <FaSearch />
         </button>
       </div>
 
-      <SearchONU
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        searchType={searchType}
-        setSearchType={setSearchType}
-        handleSearchONU={handleSearchONUClick}
-        searchLoading={searchLoading}
-      />
+      {/* ---------------- Autofind Table ---------------- */}
+      {loadingAutofind ? (
+        <p>Loading Autofind results...</p>
+      ) : autofindResults.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">Autofind Results</h2>
 
-      {searchResult && !searchLoading && (
-        <ONUInfoCard
-          searchResult={searchResult}
-          actionLoading={actionLoading}
-          handleRebootClick={() => setShowRebootModal(true)}
-          handleDeleteClick={() => setShowDeleteModal(true)}
-        />
-      )}
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border border-gray-700">
+              <thead>
+                <tr className="bg-gray-800 text-left">
+                  <th className="px-4 py-2 border-b">FSP</th>
+                  <th className="px-4 py-2 border-b">ONTID</th>
+                  <th className="px-4 py-2 border-b">SN</th>
+                  <th className="px-4 py-2 border-b">Description</th>
+                  <th className="px-4 py-2 border-b">Device ID</th>
+                </tr>
+              </thead>
 
-      {showRebootModal && (
-        <ConfirmModal
-          message={`Are you sure you want to reboot ONU ${searchResult.SN}?`}
-          onConfirm={handleConfirmReboot}
-          onCancel={() => setShowRebootModal(false)}
-          loading={actionLoading}
-        />
-      )}
+              <tbody>
+                {autofindResults.map((onu, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-gray-900 cursor-pointer transition"
+                    onClick={() => handleAutofindRowClick(onu)}
+                  >
+                    <td className="px-4 py-2 border-b">{onu.FSP}</td>
+                    <td className="px-4 py-2 border-b">{onu.ONTID}</td>
+                    <td className="px-4 py-2 border-b break-all">{onu.SN}</td>
+                    <td className="px-4 py-2 border-b">{onu.desc}</td>
+                    <td className="px-4 py-2 border-b">{onu.device_id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
-      {showDeleteModal && (
-        <ConfirmModal
-          message={`Are you sure you want to delete ONU ${searchResult.SN}?`}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setShowDeleteModal(false)}
-          loading={actionLoading}
-        />
-      )}
+      {/* ---------------- Search Table ---------------- */}
+      {loading ? (
+        <p>Searching...</p>
+      ) : searchResults.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">Search Results</h2>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border border-gray-700">
+              <thead>
+                <tr className="bg-gray-800 text-left">
+                  <th className="px-4 py-2 border-b">FSP</th>
+                  <th className="px-4 py-2 border-b">ONTID</th>
+                  <th className="px-4 py-2 border-b">SN</th>
+                  <th className="px-4 py-2 border-b">Description</th>
+                  <th className="px-4 py-2 border-b">Device ID</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {searchResults.map((onu, idx) => (
+                  <tr
+                    key={idx}
+                    onClick={() => handleRowClick(onu)}
+                    className="hover:bg-gray-900 cursor-pointer transition"
+                  >
+                    <td className="px-4 py-2 border-b">{onu.FSP}</td>
+                    <td className="px-4 py-2 border-b">{onu.ONTID}</td>
+                    <td className="px-4 py-2 border-b break-all">{onu.SN}</td>
+                    <td className="px-4 py-2 border-b">{onu.desc}</td>
+                    <td className="px-4 py-2 border-b">{onu.device_id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ---------------- No Results ---------------- */}
+      {searchResults.length === 0 &&
+        autofindResults.length === 0 &&
+        !loading &&
+        !loadingAutofind && <p>No ONUs found.</p>}
     </div>
   );
 };

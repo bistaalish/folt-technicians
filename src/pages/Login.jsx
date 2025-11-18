@@ -22,7 +22,7 @@ const Login = () => {
         sessionStorage.setItem("token_type", data.token_type);
         sessionStorage.setItem("expire_at", expireAt);
 
-        navigate("/dashboard");
+        navigate("/device");
       }
     } catch (err) {
       setError("Invalid email or password");
@@ -32,7 +32,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex justify-center items-center bg-[#0f0f0f]">
       <div className="p-10 bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl w-[350px] text-white">
-        <h1 className="text-3xl font-bold text-center mb-6">Admin Login</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">Technicians Login</h1>
 
         {error && <p className="text-red-400 text-center">{error}</p>}
 

@@ -32,3 +32,29 @@ export const deleteONU = async (deviceId, FSP, ONTID, SN, Description) => {
   });
   return res.data;
 };
+
+export const autofindONUs = async (deviceId) => {
+  const res = await API.get(`/device/${deviceId}/onu/autofind`);
+  return res.data; // returns an array of { FSP, SN }
+};
+
+
+// Fetch device services
+export const getDeviceServices = async (deviceId) => {
+  const res = await API.get(`/device/${deviceId}/services`);
+  return res.data;
+};
+
+export const getOptical = async (deviceId, FSP, ONTID) => {
+  const res = await API.post(`/device/${deviceId}/onu/optical`, {
+    FSP,
+    ONTID,
+  });
+  return res.data; // { status: "success", ONU_RX: -14.97 }
+};
+
+export const addONU = async (deviceId, body) => {
+  const res = await API.post(`/device/${deviceId}/onu/add`, body);
+  return res.data;
+};
+
