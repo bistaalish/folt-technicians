@@ -49,7 +49,8 @@ const DevicePage = () => {
   // 🔥 Handle Search
   // -----------------------------
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    console.log(searchQuery);
+    // if (!searchQuery.trim()) return;
 
     setLoading(true);
 
